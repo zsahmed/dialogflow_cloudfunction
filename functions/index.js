@@ -5,6 +5,9 @@
 const functions = require('firebase-functions');
 const {WebhookClient} = require('dialogflow-fulfillment');
 const {Card, Suggestion} = require('dialogflow-fulfillment');
+const {BigQuery} = require('@google-cloud/bigquery');
+const bigquery = new BigQuery();
+
 
 process.env.DEBUG = 'dialogflow:debug'; // enables lib debugging statements
 
@@ -121,6 +124,34 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
      );
   }
 
+  function indonesiaAndTanzaniaTest(agent) {
+    agent.add('I am querying my database.');
+
+    const OPTIONS = {
+            query: 'SELECT country, disease.name FROM `la-hackathon-agent.slalom_hackathon.cdc_disease`, unnest(disease) disease',
+            timeoutMs: 10000,
+            useLegacySql: false,
+            queryParameters: {}
+    };
+
+    return bigquery
+    .query(OPTIONS)
+    .then(results => {
+        console.log(JSON.stringify(results))
+        console.log(JSON.stringify(results[0]))
+        const ROWS = results[0];
+        console.log('SQL Completed ' + ROWS[0].predicted_label);
+        agent.add('The request was completed')
+
+        return true;
+
+    })
+    .catch(err => {
+      console.error('ERROR:', err);
+    });
+
+  }
+
   const toMomentUnit = (unit) => {
     switch(unit) {
         case "min":
@@ -149,6 +180,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   intentMap.set('eVect Statement of Purpose', aboutMe);
   intentMap.set('eVect Creation', creatorIntent);
   intentMap.set('Warning and Prevention', warningAndPreventionIntent);
+  intentMap.set('Indonesia and Tanzania Test', indonesiaAndTanzaniaTest);
   agent.handleRequest(intentMap);
 });
 
