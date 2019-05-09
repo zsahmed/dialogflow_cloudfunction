@@ -11,6 +11,27 @@ const bigquery = new BigQuery();
 
 process.env.DEBUG = 'dialogflow:debug'; // enables lib debugging statements
 
+const activeOutbreakCountries = [ {country: 'Brazil', city: 'Mogi Guaçu', disease: 'Dengue Fever'},
+                                  {country: 'France', city: 'Paris', disease: 'Dengue Fever'},
+                                  {country: 'Mozambique', city: 'Maputo', disease: 'Malaria'},
+                                  {country: 'Zimbabwe', city: 'Manicaland', disease: 'Malaria'} ]
+
+const triageLocations = {
+  Paris: ['1 Parvis Notre-Dame - Pl. Jean-Paul II, 75004 Paris, France', '47-83 Boulevard de l\'Hôpital, 75013 Paris, France',
+            '1 Avenue Claude Vellefaux, 75010 Paris, France', '2 Rue Ambroise Paré, 75010 Paris, France', '25 Rue Marbeuf, 75008 Paris, France'],
+  Brazil: ['R. Chico de Paula, 608 - Centro, Mogi Guaçu - SP, 13840-005, Brazil', 'Av. Augusta Viola da Costa, 805 - Jardim Celina, Araras - SP, 13606-020, Brazil', 'Av. Newton Prado, 1883 - Centro, Pirassununga - SP, 13631-045, Brazil', 'R. Inácio Franco Alves, 561 - Parque Cidade Nova, Mogi-Guaçu - SP, 13845-420, Brazil']
+}
+const diseaseSymptomList = [
+  {
+    disease: 'Malaria',
+    symptoms: ['Fever', 'Shaking Chills', 'Headache', 'Muscle Ache', 'Tiredness', 'Nausea', 'Vomiting']
+  },
+  {
+    disease: 'Dengue Fever',
+    symptoms: ['High Fever', 'Severe Headache', 'Eye Pain', 'Joint Pain', 'Muscle Pain', 'Bone Pain', 'Rash', 'Mild Bleeding Manifistation']
+  }
+];
+
 exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
   const agent = new WebhookClient({ request, response });
   console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
@@ -40,22 +61,14 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     } else if (!gotSymptom && gotCity) {
       agent.add('Can you tell me your Symptoms?');
     } else if(gotSymptom && gotCity) {
+      agent.add(`I understand that you are currently experiencing ${symptom} on your trip to ${city}. Is this correct?`);
 
-      if(gotOrgan) {
-        agent.add(`I understand that you are experiencing ${symptom} in ${organ} on your trip to ${city}.`);
-      } else {
-        agent.add(`I understand that you are currently experiencing ${symptom} on your trip to ${city}.`);
-      }
-
-      agent.add(`How long have you been experiencing these symptoms?`);
-
-      agent.setContext({
-        name: 'conditionintake-followup',
-        lifespan: 2,
+      agent.context.set({
+        name: 'conditionintake-symptom-followup',
+        lifespan: 3,
         parameters: {
           city: city,
-          symptom: symptom,
-          organ: organ
+          symptom: symptom
         }
       });
 
@@ -66,18 +79,89 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     }
   }
 
-  function conditionIntakeFollowup(agent) {
-    const conditionIntakeContext = agent.getContext('conditionintake-followup');
-    const duration = agent.parameters['duration'];
-    console.log(agent.parameters);
+  function conditionIntakeSymptomFollowup(agent) {
+    const conditionIntakeContext = agent.context.get('conditionintake-symptom-followup');
+
     console.log(conditionIntakeContext);
-    const displayUnit = toMomentUnit(duration.unit);
-    const symptom = conditionIntakeContext.parameters.symptom;
+
+    const patientSymptoms = conditionIntakeContext.parameters.symptom;
     const city = conditionIntakeContext.parameters.city;
-    agent.add('To confirm:');
-    agent.add(`You are currently experiencing ${symptom} on your trip to ${city}.
-				\n You have been experiencing these symptoms for ${duration.amount} ${displayUnit}.
-				\n Is that correct?`);
+
+    let outbreakArea = activeOutbreakCountries.find(outbreak => outbreak.city === city);
+
+    console.log(outbreakArea);
+
+    if (outbreakArea) {
+      agent.add(`I would like to gather some more information on your current condition. Could you please tell me if you're experiencing any of the following symptoms as well?`);
+
+      let diseaseObj = diseaseSymptomList.find((dis) => {
+
+        if (dis.disease === outbreakArea.disease) {
+          return dis;
+        }
+
+      });
+
+      let potentialOutbreakSymptoms = diseaseObj.symptoms.filter((symptom) => {
+
+        if(!patientSymptoms.includes(symptom)) {
+          return symptom;
+        }
+
+      });
+
+      agent.add(`\n ${potentialOutbreakSymptoms.join('\n - ')}`);
+
+      agent.context.set({
+        name: 'conditionintake-symptom-followup',
+        lifespan: 3,
+        parameters: {
+          city: city,
+          symptom: patientSymptoms,
+          outbreak: outbreakArea
+        }
+      });
+
+    }
+    else {
+      agent.end('Currently, there are no vector disease outbreaks in your area. If symptoms persist, please visit a local doctor at your earliest convienience.')
+    }
+
+  }
+
+  function conditionIntakeSymptomAnalysis(agent) {
+    const conditionIntakeContext = agent.context.get('conditionintake-symptom-followup');
+
+    const symptomFollowUpList = agent.parameters['Symptom'];
+    const originalUserSymptomList = conditionIntakeContext.parameters.symptom;
+    const outbreakDisease = conditionIntakeContext.parameters.outbreak.disease;
+    const city = conditionIntakeContext.parameters.city;
+
+    let diseaseObj = diseaseSymptomList.find((dis) => {
+
+      if (dis.disease === outbreakDisease) {
+        return dis;
+      }
+
+    });
+
+    console.log(conditionIntakeContext);
+
+    agent.add('Thank you. Please give me a moment to review your symptoms.');
+
+    let allCollectedSymptoms = [...symptomFollowUpList, ...originalUserSymptomList];
+    console.log(allCollectedSymptoms);
+
+    let potentialOutbreakSymptoms = allCollectedSymptoms.filter(userSymptom => diseaseObj.symptoms.includes(userSymptom));
+
+    console.log('potentialOutbreakSymptoms ' + potentialOutbreakSymptoms);
+    if(potentialOutbreakSymptoms.length > 0) {
+      console.log(city)
+      agent.add('You seem to be exhibiting symptoms of ' + outbreakDisease + '. Please make your way to ' + triageLocations[city][0] + ' for immediate treatment.');
+    } else {
+      agent.end('You\'re symptoms do not seem to be related to any vector borne disease outbreaks in the area. Please visit your local doctor or physician if your symptoms continue to persist.');
+    }
+
 
   }
 
@@ -176,7 +260,8 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   intentMap.set('Default Welcome Intent', welcome);
   intentMap.set('Default Fallback Intent', fallback);
   intentMap.set('Condition Intake', conditionIntake);
-  intentMap.set('Condition Intake - Duration Followup', conditionIntakeFollowup);
+  intentMap.set('Condition Intake - Symptom Followup', conditionIntakeSymptomFollowup);
+  intentMap.set('Condition Intake - Symptom Analysis', conditionIntakeSymptomAnalysis);
   intentMap.set('eVect Statement of Purpose', aboutMe);
   intentMap.set('eVect Creation', creatorIntent);
   intentMap.set('Warning and Prevention', warningAndPreventionIntent);
