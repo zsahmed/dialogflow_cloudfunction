@@ -19,7 +19,11 @@ const activeOutbreakCountries = [ {country: 'Brazil', city: 'Mogi Guaçu', disea
 const triageLocations = {
   Paris: ['1 Parvis Notre-Dame - Pl. Jean-Paul II, 75004 Paris, France', '47-83 Boulevard de l\'Hôpital, 75013 Paris, France',
             '1 Avenue Claude Vellefaux, 75010 Paris, France', '2 Rue Ambroise Paré, 75010 Paris, France', '25 Rue Marbeuf, 75008 Paris, France'],
-  Brazil: ['R. Chico de Paula, 608 - Centro, Mogi Guaçu - SP, 13840-005, Brazil', 'Av. Augusta Viola da Costa, 805 - Jardim Celina, Araras - SP, 13606-020, Brazil', 'Av. Newton Prado, 1883 - Centro, Pirassununga - SP, 13631-045, Brazil', 'R. Inácio Franco Alves, 561 - Parque Cidade Nova, Mogi-Guaçu - SP, 13845-420, Brazil']
+  Brazil: ['R. Chico de Paula, 608 - Centro, Mogi Guaçu - SP, 13840-005, Brazil', 'Av. Augusta Viola da Costa, 805 - Jardim Celina, Araras - SP, 13606-020, Brazil',
+              'Av. Newton Prado, 1883 - Centro, Pirassununga - SP, 13631-045, Brazil', 'R. Inácio Franco Alves, 561 - Parque Cidade Nova, Mogi-Guaçu - SP, 13845-420, Brazil'],
+  Mozambique: ['Avenida Do Trabalho, Maputo, Mozambique', '466 Av. Ahmed Sekou Touré, Maputo, Mozambique'],
+  Zimbabwe: ['7 Mbuya Nehanda Street, Rusape, North Avenue, Rusape, Zimbabwe', '124 Herbert Chitepo St, Mutare, Zimbabwe', 'Mutare Provincial Hospital Box 30, Mutare, Zimbabwe']
+
 }
 const diseaseSymptomList = [
   {
@@ -28,7 +32,7 @@ const diseaseSymptomList = [
   },
   {
     disease: 'Dengue Fever',
-    symptoms: ['High Fever', 'Severe Headache', 'Eye Pain', 'Joint Pain', 'Muscle Pain', 'Bone Pain', 'Rash', 'Mild Bleeding Manifistation']
+    symptoms: ['High Fever', 'Severe Headache', 'Eye Pain', 'Joint Pain', 'Muscle Pain', 'Bone Pain', 'Rash']
   }
 ];
 
@@ -92,7 +96,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     console.log(outbreakArea);
 
     if (outbreakArea) {
-      agent.add(`I would like to gather some more information on your current condition. Could you please tell me if you're experiencing any of the following symptoms as well?`);
+      agent.add(`I would like to gather some more information on your current condition. Could you please tell me if you're experiencing any of the following symptoms as well? \n `);
 
       let diseaseObj = diseaseSymptomList.find((dis) => {
 
@@ -110,7 +114,13 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
       });
 
-      agent.add(`\n ${potentialOutbreakSymptoms.join('\n - ')}`);
+      console.log(potentialOutbreakSymptoms);
+      if(potentialOutbreakSymptoms.length > 3) {
+        potentialOutbreakSymptoms = potentialOutbreakSymptoms.splice(0, 3);
+        console.log(potentialOutbreakSymptoms);
+      }
+
+      agent.add(`\n - ${potentialOutbreakSymptoms.join('\n - ')}`);
 
       agent.context.set({
         name: 'conditionintake-symptom-followup',
@@ -124,7 +134,9 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
     }
     else {
-      agent.end('Currently, there are no vector disease outbreaks in your area. If symptoms persist, please visit a local doctor at your earliest convienience.')
+        let conv = agent.conv(); // Get Actions on Google library conv instance
+        conv.close('Currently, there are no vector disease outbreaks in your area. If symptoms persist, please visit a local doctor at your earliest convienience.'); // Use Actions on Google library
+        agent.add(conv); // Add Actions on Google library responses to your agent's responsex
     }
 
   }
@@ -147,19 +159,53 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
     console.log(conditionIntakeContext);
 
-    agent.add('Thank you. Please give me a moment to review your symptoms.');
-
     let allCollectedSymptoms = [...symptomFollowUpList, ...originalUserSymptomList];
     console.log(allCollectedSymptoms);
 
     let potentialOutbreakSymptoms = allCollectedSymptoms.filter(userSymptom => diseaseObj.symptoms.includes(userSymptom));
 
     console.log('potentialOutbreakSymptoms ' + potentialOutbreakSymptoms);
+
+    let conv = agent.conv();
     if(potentialOutbreakSymptoms.length > 0) {
-      console.log(city)
-      agent.add('You seem to be exhibiting symptoms of ' + outbreakDisease + '. Please make your way to ' + triageLocations[city][0] + ' for immediate treatment.');
+      if(triageLocations[city].length > 1) {
+        agent.add('Thank you for your cooperation. You seem to be exhibiting symptoms of ' + outbreakDisease + '. \n Please make your way to \n' + triageLocations[city][0] + '\n for immediate treatment.');
+        agent.add('Would you like additional hospital locations in your area?');
+
+        agent.context.set({
+          name: 'hospital-followup',
+          lifespan: 2,
+          parameters: {
+            city: city
+          }
+        });
+      } else {
+        conv.close('Thank you for your cooperation. You seem to be exhibiting symptoms of ' + outbreakDisease + '. \n Please make your way to \n' + triageLocations[city][0] + '\n for immediate treatment.');
+        agent.add(conv);
+      }
+
+
     } else {
-      agent.end('You\'re symptoms do not seem to be related to any vector borne disease outbreaks in the area. Please visit your local doctor or physician if your symptoms continue to persist.');
+       // Get Actions on Google library conv instance
+      conv.close('Thank you for your cooperation. You\'re symptoms do not seem to be related to any vector borne disease outbreaks in the area. Please visit your local doctor or physician if your symptoms continue to persist.');
+      agent.add(conv);
+    }
+
+
+  }
+
+  function hospitalFollowupIntent(agent) {
+    const conditionIntakeContext = agent.context.get('hospital-followup');
+    const city = conditionIntakeContext.parameters.city;
+    console.log('final intent city: ' + city);
+
+    let moreHospitalOptions = triageLocations[city].slice(1);
+    console.log('moreHosOptions' + moreHospitalOptions);
+
+    if(moreHospitalOptions.length > 1) {
+      agent.add('There are other medical facilities located at \n ' + moreHospitalOptions[0] + ' \n and \n' + moreHospitalOptions[1]);
+    } else {
+      agent.add('There is another medical facility at \n' + moreHospitalOptions[0]);
     }
 
 
@@ -262,6 +308,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   intentMap.set('Condition Intake', conditionIntake);
   intentMap.set('Condition Intake - Symptom Followup', conditionIntakeSymptomFollowup);
   intentMap.set('Condition Intake - Symptom Analysis', conditionIntakeSymptomAnalysis);
+  intentMap.set('Condition Intake - Hospital Followup', hospitalFollowupIntent);
   intentMap.set('eVect Statement of Purpose', aboutMe);
   intentMap.set('eVect Creation', creatorIntent);
   intentMap.set('Warning and Prevention', warningAndPreventionIntent);
