@@ -63,7 +63,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     if(gotSymptom && !gotCity) {
       agent.add('What city are you currently located in?');
     } else if (!gotSymptom && gotCity) {
-      agent.add('Can you tell me your Symptoms?');
+      agent.add('Can you tell me your symptoms?');
     } else if(gotSymptom && gotCity) {
       agent.add(`I understand that you are currently experiencing ${symptom} on your trip to ${city}. Is this correct?`);
 
@@ -96,7 +96,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     console.log(outbreakArea);
 
     if (outbreakArea) {
-      agent.add(`I would like to gather some more information on your current condition. Could you please tell me if you're experiencing any of the following symptoms as well? \n `);
+      agent.add(`I would like to gather some more information on your current condition. Could you please tell me if you're experiencing any of the following symptoms?`);
 
       let diseaseObj = diseaseSymptomList.find((dis) => {
 
@@ -117,10 +117,9 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
       console.log(potentialOutbreakSymptoms);
       if(potentialOutbreakSymptoms.length > 3) {
         potentialOutbreakSymptoms = potentialOutbreakSymptoms.splice(0, 3);
-        console.log(potentialOutbreakSymptoms);
       }
 
-      agent.add(`\n - ${potentialOutbreakSymptoms.join('\n - ')}`);
+      agent.add(`- ${potentialOutbreakSymptoms.join('\n- ')}`);
 
       agent.context.set({
         name: 'conditionintake-symptom-followup',
@@ -169,7 +168,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     let conv = agent.conv();
     if(potentialOutbreakSymptoms.length > 0) {
       if(triageLocations[city].length > 1) {
-        agent.add('Thank you for your cooperation. You seem to be exhibiting symptoms of ' + outbreakDisease + '. \n Please make your way to \n' + triageLocations[city][0] + '\n for immediate treatment.');
+        agent.add('Thank you for your cooperation. You seem to be exhibiting symptoms of ' + outbreakDisease + '. Please make your way to \n \n' + triageLocations[city][0] + '\n \n for immediate treatment.');
         agent.add('Would you like additional hospital locations in your area?');
 
         agent.context.set({
@@ -180,7 +179,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
           }
         });
       } else {
-        conv.close('Thank you for your cooperation. You seem to be exhibiting symptoms of ' + outbreakDisease + '. \n Please make your way to \n' + triageLocations[city][0] + '\n for immediate treatment.');
+        conv.close('Thank you for your cooperation. You seem to be exhibiting symptoms of ' + outbreakDisease + '. \n Please make your way to: \n' + triageLocations[city][0] + '\n for immediate treatment.');
         agent.add(conv);
       }
 
@@ -203,7 +202,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     console.log('moreHosOptions' + moreHospitalOptions);
 
     if(moreHospitalOptions.length > 1) {
-      agent.add('There are other medical facilities located at \n ' + moreHospitalOptions[0] + ' \n and \n' + moreHospitalOptions[1]);
+      agent.add('There are other medical facilities located at: \n \n' + moreHospitalOptions[0] + ' \n \nand \n \n' + moreHospitalOptions[1]);
     } else {
       agent.add('There is another medical facility at \n' + moreHospitalOptions[0]);
     }
