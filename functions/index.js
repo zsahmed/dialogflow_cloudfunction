@@ -19,10 +19,10 @@ const activeOutbreakCountries = [ {country: 'Brazil', city: 'Mogi Guaçu', disea
 const triageLocations = {
   Paris: ['1 Parvis Notre-Dame - Pl. Jean-Paul II, 75004 Paris, France', '47-83 Boulevard de l\'Hôpital, 75013 Paris, France',
             '1 Avenue Claude Vellefaux, 75010 Paris, France', '2 Rue Ambroise Paré, 75010 Paris, France', '25 Rue Marbeuf, 75008 Paris, France'],
-  Brazil: ['R. Chico de Paula, 608 - Centro, Mogi Guaçu - SP, 13840-005, Brazil', 'Av. Augusta Viola da Costa, 805 - Jardim Celina, Araras - SP, 13606-020, Brazil',
+  mogi_guacu: ['R. Chico de Paula, 608 - Centro, Mogi Guaçu - SP, 13840-005, Brazil', 'Av. Augusta Viola da Costa, 805 - Jardim Celina, Araras - SP, 13606-020, Brazil',
               'Av. Newton Prado, 1883 - Centro, Pirassununga - SP, 13631-045, Brazil', 'R. Inácio Franco Alves, 561 - Parque Cidade Nova, Mogi-Guaçu - SP, 13845-420, Brazil'],
-  Mozambique: ['Avenida Do Trabalho, Maputo, Mozambique', '466 Av. Ahmed Sekou Touré, Maputo, Mozambique'],
-  Zimbabwe: ['7 Mbuya Nehanda Street, Rusape, North Avenue, Rusape, Zimbabwe', '124 Herbert Chitepo St, Mutare, Zimbabwe', 'Mutare Provincial Hospital Box 30, Mutare, Zimbabwe']
+  Maputo: ['Avenida Do Trabalho, Maputo, Mozambique', '466 Av. Ahmed Sekou Touré, Maputo, Mozambique'],
+  Manicaland: ['7 Mbuya Nehanda Street, Rusape, North Avenue, Rusape, Zimbabwe', '124 Herbert Chitepo St, Mutare, Zimbabwe', 'Mutare Provincial Hospital Box 30, Mutare, Zimbabwe']
 
 }
 const diseaseSymptomList = [
@@ -146,7 +146,11 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     const symptomFollowUpList = agent.parameters['Symptom'];
     const originalUserSymptomList = conditionIntakeContext.parameters.symptom;
     const outbreakDisease = conditionIntakeContext.parameters.outbreak.disease;
-    const city = conditionIntakeContext.parameters.city;
+    let city = conditionIntakeContext.parameters.city;
+
+    if(city === 'Mogi Guaçu') {
+      city = 'mogi_guacu';
+    }
 
     let diseaseObj = diseaseSymptomList.find((dis) => {
 
