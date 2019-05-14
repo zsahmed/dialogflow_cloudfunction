@@ -212,27 +212,92 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   }
 
   function warningAndPreventionIntent(agent) {
-    const city = agent.parameters['geo-city'];
-    const country = agent.parameters['geo-country'];
-    const region = agent.parameters['Region'];
+    const userCountry = agent.parameters['geo-country'];
+    console.log(userCountry)
 
-    const gotCity = city.length > 0;
-    const gotCountry = country.length > 0;
-    const gotRegion = region.length > 0;
-
-    if(gotRegion) {
-    	agent.add(`Cool! Can you tell me the cities you'll be visiting on your trip to ${region}?`);
-    }
+    const gotCountry = userCountry.length > 0;
 
     if(gotCountry) {
-    	agent.add(`Cool! Can you tell me the cities you'll be visiting on your trip to ${country}?`);
+      agent.add('Im looking into your trip');
+
+      const OPTIONS = {
+              query: 'SELECT disease.name FROM `la-hackathon-agent.slalom_hackathon.cdc_disease`, unnest(disease) disease WHERE country = @country',
+              timeoutMs: 10000,
+              useLegacySql: false,
+              params: {country: userCountry[0]}
+      };
+
+      return bigquery
+      .query(OPTIONS)
+      .then(results => {
+          console.log(JSON.stringify(results[0]))
+          const ROWS = results[0];
+
+          let diseaseList = [];
+
+          for(var row of ROWS) {
+            diseaseList.push(row.name);
+            console.log(diseaseList);
+          }
+
+          if(ROWS.length > 1) {
+            agent.add(`Here is a list of active diseases and contagions in ${userCountry}. \n - ${diseaseList.join('\n - ')} \nIf you would like prevention tips on a disease, respond with the name of the disease.`);
+
+            agent.context.set({
+              name: 'prevention-followup',
+              lifespan: 2,
+              parameters: {
+                country: userCountry
+              }
+            });
+
+          } else {
+            agent.add(`There doesn't seem to be any active vector diseases in ${userCountry}. Enjoy your trip!`);
+          }
+
+
+          return true;
+
+      })
+      .catch(err => {
+        console.error('ERROR:', err);
+      });
     }
 
-    if(gotCity) {
-    	agent.add(`So you will be visiting ${city}?`);
-    }
 
   }
+
+  function warningAndPreventionFollowup(agent) {
+    const preventionContext = agent.context.get('prevention-followup');
+    const disease = agent.parameters['Disease'];
+    const userCountry = preventionContext.parameters['country'];
+
+    const OPTIONS = {
+            query: 'SELECT disease.description FROM `la-hackathon-agent.slalom_hackathon.cdc_disease`, unnest(disease) disease where disease.name= @dis and country = @country',
+            timeoutMs: 10000,
+            useLegacySql: false,
+            params: {dis: disease, country: userCountry[0]}
+    };
+
+    return bigquery
+    .query(OPTIONS)
+    .then(results => {
+      agent.add('Let me look up some prevention tips for that.');
+      console.log(JSON.stringify(results[0]))
+      const ROWS = results[0];
+      console.log(ROWS);
+
+      agent.add(ROWS[0].description);
+
+
+      return true;
+
+    })
+    .catch(err => {
+      console.error('ERROR:', err);
+    });
+  }
+
 
   function aboutMe(agent) {
     agent.add('I am trained to provide warning and prevention tips to gaurd against vector borne diseases and epidemics based on your location.');
@@ -258,7 +323,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     agent.add('I am querying my database.');
 
     const OPTIONS = {
-            query: 'SELECT country, disease.name FROM `la-hackathon-agent.slalom_hackathon.cdc_disease`, unnest(disease) disease',
+            query: 'SELECT country, disease.name FROM `la-hackathon-agent.slalom_hackathon.cdc_disease`, unnest(disease) disease WHERE country = @country',
             timeoutMs: 10000,
             useLegacySql: false,
             queryParameters: {}
@@ -312,6 +377,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   intentMap.set('eVect Statement of Purpose', aboutMe);
   intentMap.set('eVect Creation', creatorIntent);
   intentMap.set('Warning and Prevention', warningAndPreventionIntent);
+  intentMap.set('Warning and Prevention - followup', warningAndPreventionFollowup);
   intentMap.set('Indonesia and Tanzania Test', indonesiaAndTanzaniaTest);
   agent.handleRequest(intentMap);
 });
