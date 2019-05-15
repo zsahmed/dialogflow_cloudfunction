@@ -172,7 +172,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     let conv = agent.conv();
     if(potentialOutbreakSymptoms.length > 0) {
       if(triageLocations[city].length > 1) {
-        agent.add('Thank you for your cooperation. You seem to be exhibiting symptoms of ' + outbreakDisease + '. Please make your way to \n \n' + triageLocations[city][0] + '\n \n for immediate treatment.');
+        agent.add('Thank you for your cooperation. Based on recent outbreaks in your area and the symptoms you\'re exhibiting, you may have ' + outbreakDisease + '. Please make your way to \n \n' + triageLocations[city][0] + '\n \n for immediate treatment.');
         agent.add('Would you like additional hospital locations in your area?');
 
         agent.context.set({
