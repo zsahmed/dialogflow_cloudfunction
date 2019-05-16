@@ -69,7 +69,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
       agent.context.set({
         name: 'conditionintake-symptom-followup',
-        lifespan: 3,
+        lifespan: 1,
         parameters: {
           city: city,
           symptom: symptom
@@ -122,8 +122,8 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
       agent.add(`- ${potentialOutbreakSymptoms.join('\n- ')}`);
 
       agent.context.set({
-        name: 'conditionintake-symptom-followup',
-        lifespan: 3,
+        name: 'conditionintake-symptom-analysis-followup',
+        lifespan: 1,
         parameters: {
           city: city,
           symptom: patientSymptoms,
@@ -141,7 +141,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   }
 
   function conditionIntakeSymptomAnalysis(agent) {
-    const conditionIntakeContext = agent.context.get('conditionintake-symptom-followup');
+    const conditionIntakeContext = agent.context.get('conditionintake-symptom-analysis-followup');
 
     const symptomFollowUpList = agent.parameters['Symptom'];
     const originalUserSymptomList = conditionIntakeContext.parameters.symptom;
@@ -215,8 +215,12 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   }
 
   function warningAndPreventionIntent(agent) {
-    const userCountry = agent.parameters['geo-country'];
+    let userCountry = agent.parameters['geo-country'];
     console.log(userCountry)
+
+    if(userCountry[0] === 'Tanzania, United Republic of') {
+      userCountry[0] = 'Tanzania';
+    }
 
     const gotCountry = userCountry.length > 0;
 
