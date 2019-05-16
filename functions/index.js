@@ -309,14 +309,11 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   function aboutMe(agent) {
     agent.add('I am trained to provide warning and prevention tips to gaurd against vector borne diseases and epidemics based on your location.');
     agent.add(`I am also capable of monitoring disease outbreaks in major geographic locations.
-				\n If you feel ill or unwell, please let me know what symptoms you are experiencing
-				and where you are located.`);
+				\nIf you feel ill or unwell, please let me know what symptoms you are experiencing and where you are located.`);
   }
 
   function creatorIntent(agent) {
-  	agent.add(`I was built by a team of technologists from the Slalom Los Angeles market
-				that believe data can be harnessed for the greater good of our communities. \n \n
-				Please reach out with any questions, concerns, or comments.`);
+  	agent.add(`I was built by a team of technologists from the Slalom Los Angeles market that believe data can be harnessed for the greater good of our communities. \n \nPlease reach out with any questions, concerns, or comments.`);
     agent.add(new Card({
          title: `Redefine what's possible`,
          imageUrl: 'https://d1.awsstatic.com/logos/partners/slalom-logo-blue-RGB.826a7ccc6b1972092669c775be9014b2ce5beedd.jpg',
