@@ -243,8 +243,11 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
           let diseaseList = [];
 
           for(var row of ROWS) {
-            diseaseList.push(row.name);
-            console.log(diseaseList);
+            if(row.name !== 'Routine Vaccines') {
+              diseaseList.push(row.name);
+              console.log(diseaseList);
+            }
+
           }
 
           if(ROWS.length > 1) {
