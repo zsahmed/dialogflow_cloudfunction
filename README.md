@@ -10,7 +10,7 @@ This translation occurs when a user's utterance matches an intent within the **e
 
 The DialogFlow agent is responsible for handling *Intents*, *Entities*, and *Fulfillment* of user requests.
 
-#### Import eVect Agent
+### Import eVect Agent
 
 The **eVect** agent can be found in its entirety under `eVect_agent/eVect.zip`.
 This zip file contains all of the JSON files related to the agent (Intents, Training Phases, Contexts, etc.)
@@ -20,10 +20,11 @@ Simply import this zip file in the DialogFlow web console to create the **eVect*
 
 The eVect DialogFlow Agent currently has two features: **Warning and Prevention** and **Condition Intake** which are comprised of several Intents.
 
-#### Warning and Prevention
+### Warning and Prevention
 
 Warning and Prevention is comprised of one Intent, and a follow-up Intent.
 This flow is for users that want health and disease information about a country they will be visiting.
+
 An example conversation:
 
 ```
@@ -48,20 +49,79 @@ CDC recommends this vaccine for most travelers, especially if you are staying wi
 ```
 
 
-##### Training
+#### Training
 
 The initial **Warning and Prevention** intent is triggered by the user describing a future trip to a country. Sample test phrases include:
 
-I will be traveling to South America.
+`I will be traveling to South America.`
 
-I'm visiting family in England.
+`I'm visiting family in England.`
 
-I am backpacking across Africa.
+`I am backpacking across Africa.`
 
-I'm going to Indonesia.
+`I'm going to Indonesia.`
 
-#### Condition Intake
-Condition Intake is comprised of one Intent, and 3 follow-up Intents.
+### Condition Intake
+Condition Intake is comprised of one Intent, and 3 follow-up Intents. This intent is triggered when user's
+tell the agent they are not feeling well on their trip.
+
+An example conversation:
+
+```
+[agent]: Good day! What can I do for you today?
+
+[user]: I'm experiencing a high fever on my trip
+
+[agent]: What city are you currently located in?
+
+[user]: Paris.
+
+[agent]: I understand that you are currently experiencing High Fever on your trip to Paris. Is this correct?
+
+[user] : Yes.
+
+[agent]: 
+I would like to gather some more information on your current condition. 
+Could you please tell me if you're experiencing any of the following symptoms?
+- Severe Headache
+- Joint Pain
+- Eye Pain
+
+[user]: I'm also experiencing a severe headache and eye pain.
+
+[agent]:
+Thank you for your cooperation. 
+Based on recent outbreaks in your area and the symptoms you're exhibiting, you may have Dengue Fever. 
+Please make your way to
+
+1 Parvis Notre-Dame - Pl. Jean-Paul II, 75004 Paris, France 
+
+for immediate treatment. Would you like additional hospital locations in your area?
+
+[user]: Yes please give me more hospital options.
+
+[agent]: 
+There are other medical facilities located at:
+
+47-83 Boulevard de l'Hôpital, 75013 Paris, France
+
+and
+
+1 Avenue Claude Vellefaux, 75010 Paris, France
+```
+
+#### Training
+
+The initial **Condition Intake** intent is triggered by the user describing symptoms of their condition or mentioning that they feel unwell.
+Sample test phrases include:
+
+`I'm experiencing muscle pain in London.`
+
+`I have back pain and a fever.`
+
+`Everything hurts.`
+
+`I feel sick in Hong Kong.`
 
 ## DialogFlow Entities
 
