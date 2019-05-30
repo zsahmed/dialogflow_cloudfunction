@@ -63,3 +63,8 @@ node_modules/
 
 # dotenv environment variables file
 .env
+.idea/workspace.xml
+.idea/vcs.xml
+.idea/modules.xml
+.idea/misc.xml
+.idea/dialogflow_cloudfunction.iml

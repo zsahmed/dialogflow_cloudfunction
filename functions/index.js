@@ -11,8 +11,8 @@ const bigquery = new BigQuery();
 
 process.env.DEBUG = 'dialogflow:debug'; // enables lib debugging statements
 
-const activeOutbreakCountries = [ {country: 'Brazil', city: 'Mogi Guaçu', disease: 'Dengue Fever'},
-                                  {country: 'France', city: 'Paris', disease: 'Dengue Fever'},
+const activeOutbreakCountries = [ {country: 'Brazil', city: 'Mogi Guaçu', disease: 'Dengue'},
+                                  {country: 'France', city: 'Paris', disease: 'Dengue'},
                                   {country: 'Mozambique', city: 'Maputo', disease: 'Malaria'},
                                   {country: 'Zimbabwe', city: 'Manicaland', disease: 'Malaria'} ]
 
@@ -31,7 +31,7 @@ const diseaseSymptomList = [
     symptoms: ['Fever', 'Shaking Chills', 'Headache', 'Muscle Ache', 'Tiredness', 'Nausea', 'Vomiting']
   },
   {
-    disease: 'Dengue Fever',
+    disease: 'Dengue',
     symptoms: ['High Fever', 'Severe Headache', 'Eye Pain', 'Joint Pain', 'Muscle Pain', 'Bone Pain', 'Rash']
   }
 ];
@@ -95,48 +95,57 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
     console.log(outbreakArea);
 
-    if (outbreakArea) {
+    if (!outbreakArea) {
+      let conv = agent.conv(); // Get Actions on Google library conv instance
+      conv.close('Currently, there are no vector disease outbreaks in your area. If symptoms persist, please visit a local doctor at your earliest convienience.'); // Use Actions on Google library
+      agent.add(conv); // Add Actions on Google library responses to your agent's responsex
+
+      return true;
+    }
+
       agent.add(`I would like to gather some more information on your current condition. Could you please tell me if you're experiencing any of the following symptoms?`);
 
-      let diseaseObj = diseaseSymptomList.find((dis) => {
+      const OPTIONS = {
+              query: 'SELECT DISTINCT SYMPTOMS FROM `la-hackathon-agent.slalom_hackathon.diagnosis_questions` WHERE DISEASE = @disease AND PRINCIPAL_SYMPTOM_FLAG = \'X\'',
+              params: {disease: outbreakArea.disease}
+      };
 
-        if (dis.disease === outbreakArea.disease) {
-          return dis;
+      return bigquery.query(OPTIONS).then(results => {
+        console.log(JSON.stringify(results[0]));
+        const potentialOutbreakSymptoms = results[0];
+
+        let displaySymptoms = [];
+
+        potentialOutbreakSymptoms.forEach((element, index, array) => {
+          console.log(element.SYMPTOMS);
+
+          if(!patientSymptoms.includes(element.SYMPTOMS)) {
+            displaySymptoms.push(element.SYMPTOMS);
+          }
+
+        });
+
+        console.log(displaySymptoms);
+        if(displaySymptoms.length > 5) {
+          displaySymptoms = displaySymptoms.splice(0, 5);
         }
 
+        agent.add(`- ${displaySymptoms.join('\n- ')}`);
+
+        agent.context.set({
+          name: 'conditionintake-symptom-analysis-followup',
+          lifespan: 1,
+          parameters: {
+            city: city,
+            symptom: patientSymptoms,
+            outbreak: outbreakArea
+          }
+        });
+
+        return true;
+      }).catch(err => {
+        console.log(err);
       });
-
-      let potentialOutbreakSymptoms = diseaseObj.symptoms.filter((symptom) => {
-
-        if(!patientSymptoms.includes(symptom)) {
-          return symptom;
-        }
-
-      });
-
-      console.log(potentialOutbreakSymptoms);
-      if(potentialOutbreakSymptoms.length > 3) {
-        potentialOutbreakSymptoms = potentialOutbreakSymptoms.splice(0, 3);
-      }
-
-      agent.add(`- ${potentialOutbreakSymptoms.join('\n- ')}`);
-
-      agent.context.set({
-        name: 'conditionintake-symptom-analysis-followup',
-        lifespan: 1,
-        parameters: {
-          city: city,
-          symptom: patientSymptoms,
-          outbreak: outbreakArea
-        }
-      });
-
-    }
-    else {
-        let conv = agent.conv(); // Get Actions on Google library conv instance
-        conv.close('Currently, there are no vector disease outbreaks in your area. If symptoms persist, please visit a local doctor at your earliest convienience.'); // Use Actions on Google library
-        agent.add(conv); // Add Actions on Google library responses to your agent's responsex
-    }
 
   }
 
