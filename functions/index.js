@@ -11,11 +11,6 @@ const bigquery = new BigQuery();
 
 process.env.DEBUG = 'dialogflow:debug'; // enables lib debugging statements
 
-const activeOutbreakCountries = [ {country: 'Brazil', city: 'Mogi Guaçu', disease: 'Dengue'},
-                                  {country: 'France', city: 'Paris', disease: 'Dengue'},
-                                  {country: 'Mozambique', city: 'Maputo', disease: 'Malaria'},
-                                  {country: 'Zimbabwe', city: 'Manicaland', disease: 'Malaria'} ]
-
 const triageLocations = {
   Paris: ['1 Parvis Notre-Dame - Pl. Jean-Paul II, 75004 Paris, France', '47-83 Boulevard de l\'Hôpital, 75013 Paris, France',
             '1 Avenue Claude Vellefaux, 75010 Paris, France', '2 Rue Ambroise Paré, 75010 Paris, France', '25 Rue Marbeuf, 75008 Paris, France'],
@@ -25,16 +20,6 @@ const triageLocations = {
   Manicaland: ['7 Mbuya Nehanda Street, Rusape, North Avenue, Rusape, Zimbabwe', '124 Herbert Chitepo St, Mutare, Zimbabwe', 'Mutare Provincial Hospital Box 30, Mutare, Zimbabwe']
 
 }
-const diseaseSymptomList = [
-  {
-    disease: 'Malaria',
-    symptoms: ['Fever', 'Shaking Chills', 'Headache', 'Muscle Ache', 'Tiredness', 'Nausea', 'Vomiting']
-  },
-  {
-    disease: 'Dengue',
-    symptoms: ['High Fever', 'Severe Headache', 'Eye Pain', 'Joint Pain', 'Muscle Pain', 'Bone Pain', 'Rash']
-  }
-];
 
 exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
   const agent = new WebhookClient({ request, response });
@@ -65,15 +50,29 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     } else if (!gotSymptom && gotCity) {
       agent.add('Can you tell me your symptoms?');
     } else if(gotSymptom && gotCity) {
-      agent.add(`I understand that you are currently experiencing ${symptom} on your trip to ${city}. Is this correct?`);
 
-      agent.context.set({
-        name: 'conditionintake-symptom-followup',
-        lifespan: 1,
-        parameters: {
-          city: city,
-          symptom: symptom
-        }
+      const OPTIONS = {
+              query: 'SELECT country, city, outbreak FROM `la-hackathon-agent.slalom_hackathon.country_city_outbreak` WHERE city = @city',
+              params: {city: city}
+      };
+
+      return bigquery.query(OPTIONS).then(results => {
+        console.log('outbreak query: ' + results[0][0]);
+        agent.add(`I understand that you are currently experiencing ${symptom} on your trip to ${city}. Is this correct?`);
+
+        agent.context.set({
+          name: 'conditionintake-symptom-followup',
+          lifespan: 1,
+          parameters: {
+            city: city,
+            symptom: symptom,
+            outbreakArea: results[0][0]
+          }
+        });
+        return true;
+
+      }).catch(err => {
+        console.log(err);
       });
 
     }
@@ -91,7 +90,11 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     const patientSymptoms = conditionIntakeContext.parameters.symptom;
     const city = conditionIntakeContext.parameters.city;
 
-    let outbreakArea = activeOutbreakCountries.find(outbreak => outbreak.city === city);
+    let outbreakArea = conditionIntakeContext.parameters.outbreakArea;
+
+    if(outbreakArea.outbreak === 'Dengue Fever') {
+      outbreakArea.outbreak = 'Dengue';
+    }
 
     console.log(outbreakArea);
 
@@ -107,7 +110,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
       const OPTIONS = {
               query: 'SELECT DISTINCT SYMPTOMS FROM `la-hackathon-agent.slalom_hackathon.diagnosis_questions` WHERE DISEASE = @disease AND PRINCIPAL_SYMPTOM_FLAG = \'X\'',
-              params: {disease: outbreakArea.disease}
+              params: {disease: outbreakArea.outbreak}
       };
 
       return bigquery.query(OPTIONS).then(results => {
@@ -115,9 +118,10 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
         const potentialOutbreakSymptoms = results[0];
 
         let displaySymptoms = [];
+        let outbreakSymptomsList = [];
 
         potentialOutbreakSymptoms.forEach((element, index, array) => {
-          console.log(element.SYMPTOMS);
+          outbreakSymptomsList.push(element.SYMPTOMS);
 
           if(!patientSymptoms.includes(element.SYMPTOMS)) {
             displaySymptoms.push(element.SYMPTOMS);
@@ -138,7 +142,8 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
           parameters: {
             city: city,
             symptom: patientSymptoms,
-            outbreak: outbreakArea
+            allOutbreakSymptoms: outbreakSymptomsList,
+            outbreakArea: outbreakArea
           }
         });
 
@@ -154,29 +159,23 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
     const symptomFollowUpList = agent.parameters['Symptom'];
     const originalUserSymptomList = conditionIntakeContext.parameters.symptom;
-    const outbreakDisease = conditionIntakeContext.parameters.outbreak.disease;
+    const allOutbreakSymptoms = conditionIntakeContext.parameters.allOutbreakSymptoms;
+    const outbreakDisease = conditionIntakeContext.parameters.outbreakArea.outbreak;
     let city = conditionIntakeContext.parameters.city;
 
     if(city === 'Mogi Guaçu') {
       city = 'mogi_guacu';
     }
 
-    let diseaseObj = diseaseSymptomList.find((dis) => {
-
-      if (dis.disease === outbreakDisease) {
-        return dis;
-      }
-
-    });
-
     console.log(conditionIntakeContext);
 
     let allCollectedSymptoms = [...symptomFollowUpList, ...originalUserSymptomList];
+    console.log(allOutbreakSymptoms);
     console.log(allCollectedSymptoms);
 
-    let potentialOutbreakSymptoms = allCollectedSymptoms.filter(userSymptom => diseaseObj.symptoms.includes(userSymptom));
+    let potentialOutbreakSymptoms = allCollectedSymptoms.filter(userSymptom => allOutbreakSymptoms.includes(userSymptom));
 
-    console.log('potentialOutbreakSymptoms ' + potentialOutbreakSymptoms);
+    console.log('potentialUserOutbreakSymptoms ' + potentialOutbreakSymptoms);
 
     let conv = agent.conv();
     if(potentialOutbreakSymptoms.length > 0) {
