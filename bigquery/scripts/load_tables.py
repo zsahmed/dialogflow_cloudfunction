@@ -1,5 +1,7 @@
 # Initialize BigQuery environment
 from google.cloud import bigquery
+import os
+
 client = bigquery.Client()
 dataset_id = 'evect_health'
 dataset_ref = client.dataset(dataset_id)
