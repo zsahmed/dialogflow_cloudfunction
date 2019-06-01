@@ -257,3 +257,25 @@ This DialogFlow webhook is hosted on **Cloud Functions for Firebase**.
 
 Once the Cloud Function is deployed, head to the Dialogflow console navigation menu.
 Click Fulfillment, toggle the Webhook button to ENABLED , and replace the url in the URL field with your Function URL.
+
+## eVect BigQuery Database
+
+Data used to power eVect stems from a variety of different public sources. The data allow the Dialogflow agent smartly process several related questions by an end user, all stemming from very different sources. Data were accessed via public APIs or public FTP sites and then lightly processed into *newline delimited JSON (NDJSON)* using [jq](https://github.com/stedolan/jq) Data were then loaded to BigQuery using the [BigQuery Python Client](https://googleapis.github.io/google-cloud-python/latest/bigquery/index.html). 
+
+This repo contains the load NDJSON formatted data and Python load scripts in the `bigquery` directory. Included below is a short description and access location of the principal data sources:
+
+- CDC Traveler Data: includes detailed prevention tips on diseases by country, including traveler sub-group entity (e.g. traveling with children, pregnant women). 
+Source: [CDC Travel](https://wwwnc.cdc.gov/travel/)
+
+- Disease Symptom Data: includes common and principal symptoms related to various vector-borne diseases, broken out by traveler sub-group entity.
+Source: [CDC Disease Symptoms and Treatment Pages (example for Dengue Fever)](https://www.cdc.gov/dengue/symptoms/index.html)
+
+- Disease Outbreak Data: includes current vector-borne illness outbreaks in cities throughout the world. Sources: [HealthMap](https://www.healthmap.org/en/) and [Global Incident Map, Outbreaks](https://outbreaks.globalincidentmap.com/)
+
+- Hospital and Treatment Center Data: includes the name, address, and type of treatment center by country and city entities. 
+Source: [CDC Travel](https://wwwnc.cdc.gov/travel/)
+
+
+
+
+
