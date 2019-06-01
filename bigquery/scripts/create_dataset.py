@@ -21,8 +21,3 @@ dataset.description = "Dataset to house all eVect Health Dialogflow data."
 # exists within the project.
 dataset = client.create_dataset(dataset)  # API request
 print("Created dataset {}.{}".format(client.project, dataset.dataset_id))
-
-
- client.delete_dataset(evect_health, delete_contents=True, not_found_ok=True)
-
-
