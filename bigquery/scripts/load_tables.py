@@ -11,7 +11,7 @@ json_file_list=os.listdir('./data')
 table_list=[x.split('.')[0] for x in json_file_list]
 
 for json_file, table_name in zip(json_file_list, table_list):
-	filename = './data/{}'.format(json_file)
+	filename = '../data/{}'.format(json_file)
 	#table_id = '{}'.format(table_ref)
 	###
 	table_ref = dataset_ref.table(table_name)
