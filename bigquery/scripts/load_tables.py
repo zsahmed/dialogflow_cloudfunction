@@ -7,7 +7,7 @@ dataset_ref = client.dataset(dataset_id)
 
 # Retrieve files to be ingested into BigQuery
 # BigQuery tables will reflect JSON file names
-json_file_list=os.listdir('./data')
+json_file_list=os.listdir('../data')
 table_list=[x.split('.')[0] for x in json_file_list]
 
 for json_file, table_name in zip(json_file_list, table_list):
