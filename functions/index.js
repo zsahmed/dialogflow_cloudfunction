@@ -52,12 +52,13 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     } else if(gotSymptom && gotCity) {
 
       const OPTIONS = {
-              query: 'SELECT country, city, outbreak FROM `la-hackathon-agent.slalom_hackathon.country_city_outbreak` WHERE city = @city',
+              query: 'SELECT city.city, outbreak.disease FROM `la-hackathon-agent.slalom_hackathon.country_city_outbreak`, UNNEST(city) city LEFT JOIN UNNEST(city.outbreak) outbreak WHERE city.city=@city',
               params: {city: city}
       };
 
       return bigquery.query(OPTIONS).then(results => {
-        console.log('outbreak query: ' + results[0][0]);
+        console.log(JSON.stringify(results[0][0]));
+
         agent.add(`I understand that you are currently experiencing ${symptom} on your trip to ${city}. Is this correct?`);
 
         agent.context.set({
@@ -85,18 +86,10 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   function conditionIntakeSymptomFollowup(agent) {
     const conditionIntakeContext = agent.context.get('conditionintake-symptom-followup');
 
-    console.log(conditionIntakeContext);
-
     const patientSymptoms = conditionIntakeContext.parameters.symptom;
     const city = conditionIntakeContext.parameters.city;
 
     let outbreakArea = conditionIntakeContext.parameters.outbreakArea;
-
-    if(outbreakArea.outbreak === 'Dengue Fever') {
-      outbreakArea.outbreak = 'Dengue';
-    }
-
-    console.log(outbreakArea);
 
     if (!outbreakArea) {
       let conv = agent.conv(); // Get Actions on Google library conv instance
@@ -109,24 +102,24 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
       agent.add(`I would like to gather some more information on your current condition. Could you please tell me if you're experiencing any of the following symptoms?`);
 
       const OPTIONS = {
-              query: 'SELECT DISTINCT SYMPTOMS FROM `la-hackathon-agent.slalom_hackathon.diagnosis_questions` WHERE DISEASE = @disease AND PRINCIPAL_SYMPTOM_FLAG = \'X\'',
-              params: {disease: outbreakArea.outbreak}
+              query: 'SELECT distinct symptom.name FROM `la-hackathon-agent.slalom_hackathon.disease_symptoms`, UNNEST(traveler_type) traveler_type LEFT JOIN UNNEST(traveler_type.symptom) AS symptom WHERE disease_name = @disease AND symptom.PRINCIPAL_SYMPTOM = \'X\'',
+              params: {disease: outbreakArea.disease}
       };
 
       return bigquery.query(OPTIONS).then(results => {
-        console.log(JSON.stringify(results[0]));
+        console.log(OPTIONS);
+        console.log(results);
         const potentialOutbreakSymptoms = results[0];
 
         let displaySymptoms = [];
         let outbreakSymptomsList = [];
 
         potentialOutbreakSymptoms.forEach((element, index, array) => {
-          outbreakSymptomsList.push(element.SYMPTOMS);
+          outbreakSymptomsList.push(element.name);
 
-          if(!patientSymptoms.includes(element.SYMPTOMS)) {
-            displaySymptoms.push(element.SYMPTOMS);
+          if(!patientSymptoms.includes(element.name)) {
+            displaySymptoms.push(element.name);
           }
-
         });
 
         console.log(displaySymptoms);
@@ -361,25 +354,6 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     });
 
   }
-
-  const toMomentUnit = (unit) => {
-    switch(unit) {
-        case "min":
-            return "minutes";
-        case "h":
-            return "hours";
-        case "day":
-            return "days";
-        case "wk":
-            return "weeks";
-        case "mo":
-            return "months";
-        case "year":
-            return "years";
-        default:
-            throw new Error("Unrecognized unit");
-    }
-  };
 
   // Run the proper function handler based on the matched Dialogflow intent name
   let intentMap = new Map();
