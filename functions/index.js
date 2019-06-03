@@ -11,16 +11,6 @@ const bigquery = new BigQuery();
 
 process.env.DEBUG = 'dialogflow:debug'; // enables lib debugging statements
 
-const triageLocations = {
-  Paris: ['1 Parvis Notre-Dame - Pl. Jean-Paul II, 75004 Paris, France', '47-83 Boulevard de l\'Hôpital, 75013 Paris, France',
-            '1 Avenue Claude Vellefaux, 75010 Paris, France', '2 Rue Ambroise Paré, 75010 Paris, France', '25 Rue Marbeuf, 75008 Paris, France'],
-  mogi_guacu: ['R. Chico de Paula, 608 - Centro, Mogi Guaçu - SP, 13840-005, Brazil', 'Av. Augusta Viola da Costa, 805 - Jardim Celina, Araras - SP, 13606-020, Brazil',
-              'Av. Newton Prado, 1883 - Centro, Pirassununga - SP, 13631-045, Brazil', 'R. Inácio Franco Alves, 561 - Parque Cidade Nova, Mogi-Guaçu - SP, 13845-420, Brazil'],
-  Maputo: ['Avenida Do Trabalho, Maputo, Mozambique', '466 Av. Ahmed Sekou Touré, Maputo, Mozambique'],
-  Manicaland: ['7 Mbuya Nehanda Street, Rusape, North Avenue, Rusape, Zimbabwe', '124 Herbert Chitepo St, Mutare, Zimbabwe', 'Mutare Provincial Hospital Box 30, Mutare, Zimbabwe']
-
-}
-
 exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
   const agent = new WebhookClient({ request, response });
   console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
@@ -39,7 +29,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
     const symptom = agent.parameters['Symptom'];
     const organ = agent.parameters['Organ'];
-    const city = agent.parameters['geo-city'];
+    let city = agent.parameters['geo-city'];
 
     const gotSymptom = symptom.length > 0;
     const gotOrgan = organ.length > 0;
@@ -51,8 +41,12 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
       agent.add('Can you tell me your symptoms?');
     } else if(gotSymptom && gotCity) {
 
+      if(city === 'Mogi Guaçu') {
+        city = 'Mogi Guacu';
+      }
+
       const OPTIONS = {
-              query: 'SELECT city.city, outbreak.disease FROM `la-hackathon-agent.slalom_hackathon.country_city_outbreak`, UNNEST(city) city LEFT JOIN UNNEST(city.outbreak) outbreak WHERE city.city=@city',
+              query: 'SELECT city.city, outbreak.disease FROM `la-hackathon-agent.evect_health.city_country_outbreak`, UNNEST(city) city LEFT JOIN UNNEST(city.outbreak) outbreak WHERE city.city=@city',
               params: {city: city}
       };
 
@@ -102,13 +96,11 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
       agent.add(`I would like to gather some more information on your current condition. Could you please tell me if you're experiencing any of the following symptoms?`);
 
       const OPTIONS = {
-              query: 'SELECT distinct symptom.name FROM `la-hackathon-agent.slalom_hackathon.disease_symptoms`, UNNEST(traveler_type) traveler_type LEFT JOIN UNNEST(traveler_type.symptom) AS symptom WHERE disease_name = @disease AND symptom.PRINCIPAL_SYMPTOM = \'X\'',
+              query: 'SELECT distinct symptom.name FROM `la-hackathon-agent.evect_health.disease_symptoms`, UNNEST(traveler_type) traveler_type LEFT JOIN UNNEST(traveler_type.symptom) AS symptom WHERE disease_name = @disease AND symptom.PRINCIPAL_SYMPTOM = \'X\'',
               params: {disease: outbreakArea.disease}
       };
 
       return bigquery.query(OPTIONS).then(results => {
-        console.log(OPTIONS);
-        console.log(results);
         const potentialOutbreakSymptoms = results[0];
 
         let displaySymptoms = [];
@@ -122,7 +114,6 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
           }
         });
 
-        console.log(displaySymptoms);
         if(displaySymptoms.length > 5) {
           displaySymptoms = displaySymptoms.splice(0, 5);
         }
@@ -153,40 +144,47 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     const symptomFollowUpList = agent.parameters['Symptom'];
     const originalUserSymptomList = conditionIntakeContext.parameters.symptom;
     const allOutbreakSymptoms = conditionIntakeContext.parameters.allOutbreakSymptoms;
-    const outbreakDisease = conditionIntakeContext.parameters.outbreakArea.outbreak;
+    const outbreakDisease = conditionIntakeContext.parameters.outbreakArea.disease;
     let city = conditionIntakeContext.parameters.city;
 
-    if(city === 'Mogi Guaçu') {
-      city = 'mogi_guacu';
-    }
-
-    console.log(conditionIntakeContext);
-
     let allCollectedSymptoms = [...symptomFollowUpList, ...originalUserSymptomList];
-    console.log(allOutbreakSymptoms);
-    console.log(allCollectedSymptoms);
 
     let potentialOutbreakSymptoms = allCollectedSymptoms.filter(userSymptom => allOutbreakSymptoms.includes(userSymptom));
 
-    console.log('potentialUserOutbreakSymptoms ' + potentialOutbreakSymptoms);
-
     let conv = agent.conv();
     if(potentialOutbreakSymptoms.length > 0) {
-      if(triageLocations[city].length > 1) {
-        agent.add('Thank you for your cooperation. Based on recent outbreaks in your area and the symptoms you\'re exhibiting, you may have ' + outbreakDisease + '. Please make your way to \n \n' + triageLocations[city][0] + '\n \n for immediate treatment.');
-        agent.add('Would you like additional hospital locations in your area?');
 
-        agent.context.set({
-          name: 'hospital-followup',
-          lifespan: 2,
-          parameters: {
-            city: city
-          }
-        });
-      } else {
-        conv.close('Thank you for your cooperation. You seem to be exhibiting symptoms of ' + outbreakDisease + '. \n Please make your way to: \n' + triageLocations[city][0] + '\n for immediate treatment.');
-        agent.add(conv);
-      }
+      const OPTIONS = {
+              query: 'SELECT treatment_center.address from `la-hackathon-agent.evect_health.treatment_centers`, UNNEST(city) city LEFT JOIN UNNEST(city.treatment_center) treatment_center WHERE city.city = @city',
+              params: {city: city}
+      };
+
+      return bigquery.query(OPTIONS).then(results => {
+        console.log(JSON.stringify(results));
+        let treatmentCenters = results[0];
+
+        if(treatmentCenters.length > 1) {
+          agent.add('Thank you for your cooperation. Based on recent outbreaks in your area and the symptoms you\'re exhibiting, you may have ' + outbreakDisease + '. Please make your way to \n \n' + treatmentCenters[0].address + '\n \n for immediate treatment.');
+          agent.add('Would you like additional hospital locations in your area?');
+
+          agent.context.set({
+            name: 'hospital-followup',
+            lifespan: 2,
+            parameters: {
+              city: city,
+              treatmentCenters: treatmentCenters
+            }
+          });
+        } else {
+          conv.close('Thank you for your cooperation. You seem to be exhibiting symptoms of ' + outbreakDisease + '. \n Please make your way to: \n' + treatmentCenters[0].address + '\n for immediate treatment.');
+          agent.add(conv);
+        }
+
+        return true;
+
+      }).catch(err => {
+        console.log(err);
+      })
 
 
     } else {
@@ -200,25 +198,20 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
   function hospitalFollowupIntent(agent) {
     const conditionIntakeContext = agent.context.get('hospital-followup');
-    const city = conditionIntakeContext.parameters.city;
-    console.log('final intent city: ' + city);
+    const treatmentCenters = conditionIntakeContext.parameters.treatmentCenters;
 
-    let moreHospitalOptions = triageLocations[city].slice(1);
-    console.log('moreHosOptions' + moreHospitalOptions);
-
-    if(moreHospitalOptions.length > 1) {
-      agent.add('There are other medical facilities located at: \n \n' + moreHospitalOptions[0] + ' \n \nand \n \n' + moreHospitalOptions[1]);
+    if(treatmentCenters.length > 2) {
+      agent.add('There are other medical facilities located at: \n \n' + treatmentCenters[1].address + ' \n \nand \n \n' + treatmentCenters[2].address);
     } else {
-      agent.add('There is another medical facility at \n' + moreHospitalOptions[0]);
+      agent.add('There is another medical facility at \n' + treatmentCenters[1].address);
     }
-
 
   }
 
   function warningAndPreventionIntent(agent) {
     let userCountry = agent.parameters['geo-country'];
-    console.log(userCountry)
 
+    // Dialogflow and Google Actions have different values for Tanzania, so we normalize the values here for the query.
     if(userCountry[0] === 'Tanzania, United Republic of') {
       userCountry[0] = 'Tanzania';
     }
@@ -229,7 +222,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
       agent.add('Im looking into your trip');
 
       const OPTIONS = {
-              query: 'SELECT disease.name FROM `la-hackathon-agent.slalom_hackathon.cdc_disease`, unnest(disease) disease WHERE country = @country',
+              query: 'SELECT disease.name FROM `la-hackathon-agent.evect_health.disease_prevention`, unnest(disease) disease WHERE country = @country',
               timeoutMs: 10000,
               useLegacySql: false,
               params: {country: userCountry[0]}
@@ -246,9 +239,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
           for(var row of ROWS) {
             if(row.name !== 'Routine Vaccines') {
               diseaseList.push(row.name);
-              console.log(diseaseList);
             }
-
           }
 
           if(ROWS.length > 1) {
@@ -266,7 +257,6 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
             agent.add(`There doesn't seem to be any active vector diseases in ${userCountry}. Enjoy your trip!`);
           }
 
-
           return true;
 
       })
@@ -274,7 +264,6 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
         console.error('ERROR:', err);
       });
     }
-
 
   }
 
@@ -284,7 +273,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     const userCountry = preventionContext.parameters['country'];
 
     const OPTIONS = {
-            query: 'SELECT disease.description FROM `la-hackathon-agent.slalom_hackathon.cdc_disease`, unnest(disease) disease where disease.name= @dis and country = @country',
+            query: 'SELECT disease.description FROM `la-hackathon-agent.evect_health.disease_prevention`, unnest(disease) disease where disease.name= @dis and country = @country',
             timeoutMs: 10000,
             useLegacySql: false,
             params: {dis: disease, country: userCountry[0]}
@@ -296,10 +285,8 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
       agent.add('Let me look up some prevention tips for that.');
       console.log(JSON.stringify(results[0]))
       const ROWS = results[0];
-      console.log(ROWS);
 
       agent.add(ROWS[0].description);
-
 
       return true;
 
@@ -370,33 +357,3 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   intentMap.set('Indonesia and Tanzania Test', indonesiaAndTanzaniaTest);
   agent.handleRequest(intentMap);
 });
-
-
-  // // Uncomment and edit to make your own intent handler
-  // // uncomment `intentMap.set('your intent name here', yourFunctionHandler);`
-  // // below to get this function to be run when a Dialogflow intent is matched
-  // function yourFunctionHandler(agent) {
-  //   agent.add(`This message is from Dialogflow's Cloud Functions for Firebase editor!`);
-  //   agent.add(new Card({
-  //       title: `Title: this is a card title`,
-  //       imageUrl: 'https://developers.google.com/actions/images/badges/XPM_BADGING_GoogleAssistant_VER.png',
-  //       text: `This is the body text of a card.  You can even use line\n  breaks and emoji! 💁`,
-  //       buttonText: 'This is a button',
-  //       buttonUrl: 'https://assistant.google.com/'
-  //     })
-  //   );
-  //   agent.add(new Suggestion(`Quick Reply`));
-  //   agent.add(new Suggestion(`Suggestion`));
-  //   agent.setContext({ name: 'weather', lifespan: 2, parameters: { city: 'Rome' }});
-  // }
-
-  // // Uncomment and edit to make your own Google Assistant intent handler
-  // // uncomment `intentMap.set('your intent name here', googleAssistantHandler);`
-  // // below to get this function to be run when a Dialogflow intent is matched
-  // function googleAssistantHandler(agent) {
-  //   let conv = agent.conv(); // Get Actions on Google library conv instance
-  //   conv.ask('Hello from the Actions on Google client library!') // Use Actions on Google library
-  //   agent.add(conv); // Add Actions on Google library responses to your agent's response
-  // }
-  // // See https://github.com/dialogflow/dialogflow-fulfillment-nodejs/tree/master/samples/actions-on-google
-  // // for a complete Dialogflow fulfillment library Actions on Google client library v2 integration sample
