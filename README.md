@@ -271,7 +271,7 @@ Data used to power eVect stems from a variety of different public sources. The d
 
 #### Data Sources
 
-This repo contains the load NDJSON formatted data and Python load scripts in the `bigquery` directory. Data files are located in `bigquery/data/*`. Included below is a short description and original location of the principal data sources:
+This repo contains the load NDJSON formatted data and Python load scripts in the `bigquery` directory. Data files are located in `bigquery/data/`. Included below is a short description and original location of the principal data sources:
 
 - CDC Traveler Data: includes detailed prevention tips on diseases by country, including traveler sub-group entity (e.g. traveling with children, pregnant women). 
 **Source:** [CDC Travel](https://wwwnc.cdc.gov/travel/)
@@ -295,7 +295,62 @@ BigQuery setup is automated using a set of short Python scripts that use the [Bi
 This provides a dataset containing several tables referenced by the Dialogflow Agent. One notable feature we used was **[schema auto-detection]**(https://cloud.google.com/bigquery/docs/schema-detect), which scans up to 100 rows of the source file in a representative manner before inferring each field's data type. We simply enable schema auto-detection by invoking `job_config.autodetect = True` in the Python API calls to create each table.
 
 
-#### BigQuery St
+#### Denormalization and Nested / Repeated Columns
+
+Uniquely, BigQuery recommends **denormalizing** your data by using nested and repeated columns wherever possible [source](https://cloud.google.com/solutions/bigquery-data-warehouse). This contrasts traditional data warehouse convention which generally use star or snowflake schemas. Denormalization allows for increased query speed and decreased query complexity at the cost of using slightly more storage. Because storage is relatively cheap compared to compute, denormalization is preferred option. eVect Health uses nested / repeated columns stored in JSON format, though [BigQuery Supports Avro](https://cloud.google.com/bigquery/docs/nested-repeated) as well.
+
+A traditional relational database might store `continent` and `country` in a different table than `disease_name`,  `vaccination`, or `traveler_type` data and join them based on a `disease_id` field. In BigQuery, we preserve the relationships between these fields without creating (and joining) seprarate tables. Instead, we create a table containing a field `continent` which contains a nested field for `country`, which then contains nested fields like `disease_name`, or `outbreak`.
+
+The following example illustrates a simple use case using nested data. In this example, Asia is the continent and contains the country Indonesia. Indonesia contains an outbreak field and a disease field, which nests disease names, prevent tips, and considerations (which are subsequently nested for various traveler subgroups). 
+
+
+```javascript
+[
+  {
+    "continent":"Asia",
+    "country":[
+    {
+      "name":"Indonesia",
+      "outbreaks":"Dengue Fever",
+      "disease":[
+        {
+          "name":"Yellow Fever",
+          "prevention":"Get vaccinated.",
+          "description":"There is no risk of yellow fever in Indonesia. The government of Indonesia requires proof of yellow fever vaccination only if you are arriving from a country with risk of yellow fever. This does not include the US.",
+          "considerations":[
+            {
+              "traveler_subgroup":"children",
+              "description_subgroup":"This vaccine should not be given to children younger than 6 months and only with caution to children aged 6–8 months."
+            },
+            {
+              "traveler_subgroup":"pregnant",
+              "description_subgroup":"Talk to your doctor about whether you should get this vaccine if you are pregnant."
+            }
+          ]
+        }
+      ]
+    }
+   ]
+  }
+]
+```
+
+After importing the JSON into BigQuery, we might return the list of disease names in Indonesia using the following query:
+
+```sql
+SELECT
+  DISTINCT disease.name
+FROM
+  `la-hackathon-agent.evect_health.disease_prevention`,
+  UNNEST(country) country
+LEFT JOIN
+  UNNEST(country.disease) disease
+WHERE
+  country.name = 'Indonesia'
+``` 
+
+A more complicated query could return general prevention tips and recommendations for specific subgroups (e.g. children or pregnant women). Queries invoked by the Agent are parameterized with Entities gained from user input. 
+
 
 ## Performance
 
