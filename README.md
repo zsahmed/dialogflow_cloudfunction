@@ -179,7 +179,7 @@ The agent is also used to respond to user inputs and queries. Use the `agent.add
 ```
 
 #### Cloud Function BigQuery Integration
-Once Dialogflow has the proper input arguments from the user, Cloud Functions will query Big Query:
+Once Dialogflow has the proper input arguments from the user, Cloud Functions will query BigQuery:
 
 ```javascript
       const OPTIONS = {
@@ -220,7 +220,7 @@ agent.context.set({
 });
 ```
 
-The `country` context parameter is then utilized in a follow-up intent's Big Query call:
+The `country` context parameter is then utilized in a follow-up intent's BigQuery call:
 
 ```javascript
   function warningAndPreventionFollowup(agent) {
@@ -269,7 +269,9 @@ Click Fulfillment, toggle the Webhook button to ENABLED , and replace the url in
 
 Data used to power eVect stems from a variety of different public sources. The data allow the Dialogflow agent smartly process several related questions by an end user, all stemming from very different sources. Data were accessed via public APIs or public FTP sites and then lightly processed into **newline delimited JSON (NDJSON)** using **[jq](https://github.com/stedolan/jq)** Data were then loaded to BigQuery using the [BigQuery Python Client](https://googleapis.github.io/google-cloud-python/latest/bigquery/index.html). 
 
-This repo contains the load NDJSON formatted data and Python load scripts in the `bigquery` directory. Included below is a short description and access location of the principal data sources:
+#### Data Sources
+
+This repo contains the load NDJSON formatted data and Python load scripts in the `bigquery` directory. Data files are located in `bigquery/data/*`. Included below is a short description and original location of the principal data sources:
 
 - CDC Traveler Data: includes detailed prevention tips on diseases by country, including traveler sub-group entity (e.g. traveling with children, pregnant women). 
 **Source:** [CDC Travel](https://wwwnc.cdc.gov/travel/)
@@ -282,6 +284,18 @@ This repo contains the load NDJSON formatted data and Python load scripts in the
 - Hospital and Treatment Center Data: includes the name, address, and type of treatment center by country and city entities. 
 **Source:** [CDC Travel](https://wwwnc.cdc.gov/travel/)
 
+#### BigQuery Setup
+
+BigQuery setup is automated using a set of short Python scripts that use the [BigQuery Python Client](https://googleapis.github.io/google-cloud-python/latest/bigquery/index.html). These scripts are found in the repo under `bigquery/scripts/*.py`. To run these scripts, users may download the BigQuery Client locally using `virtualenv` and pip or simply use the Cloud Shell. The scripts contains two files:
+
+1. `create_dataset.py` creates a new dataset called `evect_health` within the user's GCP project.
+
+2. `load_tables.py` accesses the NDJSON files in `bigquery/data/` and creates a table for each of the raw data files. 
+
+This provides a dataset containing several tables referenced by the Dialogflow Agent. One notable feature we used was **[schema auto-detection]**(https://cloud.google.com/bigquery/docs/schema-detect), which scans up to 100 rows of the source file in a representative manner before inferring each field's data type. We simply enable schema auto-detection by invoking `job_config.autodetect = True` in the Python API calls to create each table.
+
+
+#### BigQuery St
 
 ## Performance
 
