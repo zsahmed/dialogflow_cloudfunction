@@ -1,6 +1,13 @@
-# DialogFlow Agent and Cloud Function eVect Example
+# eVect Health DialogFlow Agent and Cloud Function Example
 
-*Demonstrates a Dialogflow Agent running on GCP Cloud Functions with BiqQuery integration.*
+**6/3/2019**
+
+eVect Health is a chatbot application built on GCP that uses a Dialogflow Agent trained to ingest text and spoken user requests 
+and provide health and medical information pertaining to vector borne illnesses. 
+The Dialogflow’s pre-trained natural language processing capabilities allow users to intelligently converse with the application. 
+The Agent accesses data stored in BigQuery.
+
+*3rd place winner of Slalom's 2019 Open Data Hackathon.*
 
 ## DialogFlow Agent
 
@@ -12,7 +19,7 @@ The DialogFlow agent is responsible for handling *Intents*, *Entities*, and *Ful
 
 ### Import eVect Agent
 
-The **eVect** agent can be found in its entirety under `eVect_agent/eVect.zip`.
+The **eVect** agent can be found in its entirety under `dialogflow_agent/eVect.zip`.
 This zip file contains all of the JSON files related to the agent (Intents, Training Phases, Contexts, etc.)
 Simply import this zip file in the DialogFlow web console to create the **eVect** agent.
 
@@ -80,8 +87,8 @@ An example conversation:
 
 [user] : Yes.
 
-[agent]: 
-I would like to gather some more information on your current condition. 
+[agent]:
+I would like to gather some more information on your current condition.
 Could you please tell me if you're experiencing any of the following symptoms?
 - Severe Headache
 - Joint Pain
@@ -90,17 +97,17 @@ Could you please tell me if you're experiencing any of the following symptoms?
 [user]: I'm also experiencing a severe headache and eye pain.
 
 [agent]:
-Thank you for your cooperation. 
-Based on recent outbreaks in your area and the symptoms you're exhibiting, you may have Dengue Fever. 
+Thank you for your cooperation.
+Based on recent outbreaks in your area and the symptoms you're exhibiting, you may have Dengue Fever.
 Please make your way to
 
-1 Parvis Notre-Dame - Pl. Jean-Paul II, 75004 Paris, France 
+1 Parvis Notre-Dame - Pl. Jean-Paul II, 75004 Paris, France
 
 for immediate treatment. Would you like additional hospital locations in your area?
 
 [user]: Yes please give me more hospital options.
 
-[agent]: 
+[agent]:
 There are other medical facilities located at:
 
 47-83 Boulevard de l'Hôpital, 75013 Paris, France
@@ -260,11 +267,11 @@ Click Fulfillment, toggle the Webhook button to ENABLED , and replace the url in
 
 ## eVect BigQuery Database
 
-Data used to power eVect stems from a variety of different public sources. The data allow the Dialogflow agent smartly process several related questions by an end user, all stemming from very different sources. Data were accessed via public APIs or public FTP sites and then lightly processed into *newline delimited JSON (NDJSON)* using [jq](https://github.com/stedolan/jq) Data were then loaded to BigQuery using the [BigQuery Python Client](https://googleapis.github.io/google-cloud-python/latest/bigquery/index.html). 
+Data used to power eVect stems from a variety of different public sources. The data allow the Dialogflow agent smartly process several related questions by an end user, all stemming from very different sources. Data were accessed via public APIs or public FTP sites and then lightly processed into *newline delimited JSON (NDJSON)* using [jq](https://github.com/stedolan/jq) Data were then loaded to BigQuery using the [BigQuery Python Client](https://googleapis.github.io/google-cloud-python/latest/bigquery/index.html).
 
 This repo contains the load NDJSON formatted data and Python load scripts in the `bigquery` directory. Included below is a short description and access location of the principal data sources:
 
-- CDC Traveler Data: includes detailed prevention tips on diseases by country, including traveler sub-group entity (e.g. traveling with children, pregnant women). 
+- CDC Traveler Data: includes detailed prevention tips on diseases by country, including traveler sub-group entity (e.g. traveling with children, pregnant women).
 Source: [CDC Travel](https://wwwnc.cdc.gov/travel/)
 
 - Disease Symptom Data: includes common and principal symptoms related to various vector-borne diseases, broken out by traveler sub-group entity.
@@ -272,10 +279,61 @@ Source: [CDC Disease Symptoms and Treatment Pages (example for Dengue Fever)](ht
 
 - Disease Outbreak Data: includes current vector-borne illness outbreaks in cities throughout the world. Sources: [HealthMap](https://www.healthmap.org/en/) and [Global Incident Map, Outbreaks](https://outbreaks.globalincidentmap.com/)
 
-- Hospital and Treatment Center Data: includes the name, address, and type of treatment center by country and city entities. 
+- Hospital and Treatment Center Data: includes the name, address, and type of treatment center by country and city entities.
 Source: [CDC Travel](https://wwwnc.cdc.gov/travel/)
 
 
+## Performance
 
+Overall, the DialogFlow Agent preformed very well given the training data used. Here are some highlights:
 
+1. Latency from Cloud Function backed fulfillment is very responsive. When querying BigQuery, responses returned within
+400 - 1200ms. If there is no query required for the Intent, fulfillment responded incredibly fast in about 10ms.
 
+2. DialogFlow has excellent scalability when backed by serverless Cloud Functions. 
+
+3. DialogFlow integrates with many popular platforms such as Facebook Messenger, Slack, and Google Assistant.
+   Testing on Google Assistant is as easy as logging in with your GCP project email account and saying:
+   
+   `Talk to my test app.`
+   
+   This makes deployments of test code and training data incredible easy with one-click integrations and
+   can massively speed up development time.
+
+4. The Agent ingests training data within minutes, allowing for quick and easy testing and development cycles.
+
+5. The Agent has difficulty understanding native English speakers when pronouncing non-native city locations.
+For example, the Agent could not pick up `Mogi Guaçu` when pronounced by a native english speaker.
+
+    Fortunately, the Agent will accept both speech and text, so the remedy for these scenarios could
+    be to simply use the keyboard when speaking to the Agent over Google Assistant.
+
+6. There have been some cases of inconsistencies with the built in Entities on Google DialogFlow
+   based on which platform the user is testing with.
+
+   For example, when a user mentions `Tanzania`, the DialogFlow console will resolve the value to `Tanzania`
+   but when testing on Google Assistant, `Tanzania` resolved to `Tanzania, United Republic of`. This has to be 
+   manually handled in the codebase.
+   
+## Next Steps
+
+While this was a simple MVP to showcase the power of Dialogflow backed by BigQuery and Cloud Functions,
+there are several feature enhancements that could be made to make the Agent even more powerful.
+Here are some potential next steps:
+
+1. Gather more data for BigQuery datasets.
+
+   The data used by this MVP is just a small sample set of all the vector borne diseases that are tracked
+   across the globe. Ingesting this global information would make the Agent more robust and able to assist
+   more users across the country.
+   
+2. Persist user conversations.
+
+   To better tailor the Agent to understand what information users are requesting, user conversations should be
+   persisted after the conversation to be used in training the Agent. This will lead to more fluid and natural 
+   interactions with the Agent.
+   
+   Furthermore, Entities mentioned by the user such as `Symptoms` and `geo-city` should also be persisted. This
+   could potentially lead to the creation of a native analytics service that could predict when and where outbreaks
+   of diseases occur based on user input. This would allow DialogFlow to be backed not only by public CDC and Government 
+   data, but also an in-house custom model.
