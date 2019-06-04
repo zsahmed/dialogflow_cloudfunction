@@ -267,11 +267,11 @@ Click Fulfillment, toggle the Webhook button to ENABLED , and replace the url in
 
 ## eVect BigQuery Database
 
-Data used to power eVect stems from a variety of different public sources. The data allow the Dialogflow agent smartly process several related questions by an end user, all stemming from very different sources. Data were accessed via public APIs or public FTP sites and then lightly processed into **newline delimited JSON (NDJSON)** using **[jq](https://github.com/stedolan/jq)** Data were then loaded to BigQuery using the [BigQuery Python Client](https://googleapis.github.io/google-cloud-python/latest/bigquery/index.html). 
+Data used to power eVect Health stem from a variety of different public sources. The data allow the Dialogflow Agent to smartly process several related questions by an end user, all stemming from very different sources. Data were accessed via public APIs or public FTP sites and lightly processed into **newline delimited JSON (NDJSON)** using **[jq](https://github.com/stedolan/jq)**. Data were then loaded to BigQuery using the [BigQuery Python Client](https://googleapis.github.io/google-cloud-python/latest/bigquery/index.html). 
 
 #### Data Sources
 
-This repo contains the load NDJSON formatted data and Python load scripts in the `bigquery` directory. Data files are located in `bigquery/data/`. Included below is a short description and original location of the principal data sources:
+This repo contains the load NDJSON formatted data and Python load scripts in the `bigquery` directory. Included below is a short description and original location of the principal data sources:
 
 - CDC Traveler Data: includes detailed prevention tips on diseases by country, including traveler sub-group entity (e.g. traveling with children, pregnant women). 
 **Source:** [CDC Travel](https://wwwnc.cdc.gov/travel/)
@@ -292,16 +292,16 @@ BigQuery setup is automated using a set of short Python scripts that use the [Bi
 
 2. `load_tables.py` accesses the NDJSON files in `bigquery/data/` and creates a table for each of the raw data files. 
 
-This provides a dataset containing several tables referenced by the Dialogflow Agent. One notable feature we used was **[schema auto-detection]**(https://cloud.google.com/bigquery/docs/schema-detect), which scans up to 100 rows of the source file in a representative manner before inferring each field's data type. We simply enable schema auto-detection by invoking `job_config.autodetect = True` in the Python API calls to create each table.
+This provides a dataset containing several tables referenced by the Dialogflow Agent. One notable feature we used was **[schema auto-detection](https://cloud.google.com/bigquery/docs/schema-detect)**, which scans up to 100 rows of the source file in a representative manner before inferring each field's data type. We simply enable schema auto-detection by invoking `job_config.autodetect = True` in the Python API calls to create each table.
 
 
 #### Denormalization and Nested / Repeated Columns
 
-Uniquely, BigQuery recommends **denormalizing** your data by using nested and repeated columns wherever possible [source](https://cloud.google.com/solutions/bigquery-data-warehouse). This contrasts traditional data warehouse convention which generally use star or snowflake schemas. Denormalization allows for increased query speed and decreased query complexity at the cost of using slightly more storage. Because storage is relatively cheap compared to compute, denormalization is preferred option. eVect Health uses nested / repeated columns stored in JSON format, though [BigQuery Supports Avro](https://cloud.google.com/bigquery/docs/nested-repeated) as well.
+Uniquely, BigQuery recommends **denormalizing** your data by using nested and repeated columns wherever possible. This contrasts traditional data warehouse convention which generally employ star or snowflake schemas. Denormalization in BigQuery allows for increased query speed and decreased query complexity at the cost of using slightly more storage. Because storage is relatively cheap compared to compute, denormalization is preferred option. eVect Health uses nested / repeated columns stored in JSON format, though BigQuery also [supports Avro](https://cloud.google.com/bigquery/docs/nested-repeated).
 
-A traditional relational database might store `continent` and `country` in a different table than `disease_name`,  `vaccination`, or `traveler_type` data and join them based on a `disease_id` field. In BigQuery, we preserve the relationships between these fields without creating (and joining) seprarate tables. Instead, we create a table containing a field `continent` which contains a nested field for `country`, which then contains nested fields like `disease_name`, or `outbreak`.
+A traditional relational database might store `continent` and `country` in a different table than `disease_name`,  `description`, or `traveler_subgroup ` data and join them based on a `disease_id` field. In BigQuery, we preserve the relationships between these fields without creating (and joining) seprarate tables. Instead, we create a table containing a field `continent` which contains a nested field for `country`, which then contains nested fields like `disease_name`, or `outbreak` and so on.
 
-The following example illustrates a simple use case using nested data. In this example, Asia is the continent and contains the country Indonesia. Indonesia contains an outbreak field and a disease field, which nests disease names, prevent tips, and considerations (which are subsequently nested for various traveler subgroups). 
+The following example illustrates a simple use case using nested data. In this example, Asia is the continent and contains the country Indonesia. Indonesia contains an outbreak field and a disease field, which nests disease names, prevention tips, and disease considerations (which are subsequently nested for various traveler subgroups). 
 
 
 ```javascript
@@ -349,7 +349,7 @@ WHERE
   country.name = 'Indonesia'
 ``` 
 
-A more complicated query could return general prevention tips and recommendations for specific subgroups (e.g. children or pregnant women). Queries invoked by the Agent are parameterized with Entities gained from user input. 
+A more complicated query could return general prevention tips and recommendations for specific subgroups (e.g. children or pregnant women). Queries invoked by the Dialogflow Agent are parameterized with Entities gained from user input. 
 
 
 ## Performance
