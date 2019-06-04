@@ -1,4 +1,4 @@
-# eVect Health DialogFlow Agent and Cloud Function Example
+# eVect Health Dialogflow Agent and Cloud Function Example
 
 **6/3/2019**
 
@@ -9,23 +9,23 @@ The Agent accesses data stored in BigQuery.
 
 *3rd place winner of Slalom's 2019 Open Data Hackathon.*
 
-## DialogFlow Agent
+## Dialogflow Agent
 
 Agents are best described as Natural Language Understanding (NLU) modules.
 This **eVect** agent is trained to ingest text and spoken user requests and provide disease, health, and medical information.
 This translation occurs when a user's utterance matches an intent within the **eVect** agent.
 
-The DialogFlow agent is responsible for handling *Intents*, *Entities*, and *Fulfillment* of user requests.
+The Dialogflow agent is responsible for handling *Intents*, *Entities*, and *Fulfillment* of user requests.
 
 ### Import eVect Agent
 
 The **eVect** agent can be found in its entirety under `dialogflow_agent/eVect.zip`.
 This zip file contains all of the JSON files related to the agent (Intents, Training Phases, Contexts, etc.)
-Simply import this zip file in the DialogFlow web console to create the **eVect** agent.
+Simply import this zip file in the Dialogflow web console to create the **eVect** agent.
 
-## DialogFlow Intents
+## Dialogflow Intents
 
-The eVect DialogFlow Agent currently has two features: **Warning and Prevention** and **Condition Intake** which are comprised of several Intents.
+The eVect Dialogflow Agent currently has two features: **Warning and Prevention** and **Condition Intake** which are comprised of several Intents.
 
 ### Warning and Prevention
 
@@ -130,10 +130,10 @@ Sample test phrases include:
 
 `I feel sick in Hong Kong.`
 
-## DialogFlow Entities
+## Dialogflow Entities
 
 Entities are Dialogflow's mechanism for identifying and extracting useful data from natural language inputs.
-DialogFlow comes pre-built with several system Entities such as `geo-country` or `geo-city` that can be utilized out of the box.
+Dialogflow comes pre-built with several system Entities such as `geo-country` or `geo-city` that can be utilized out of the box.
 In addition to those pre-built Entities **eVect** relies on the following custom trained Entities:
 
 `@Disease`
@@ -144,9 +144,9 @@ The `@Disease` Entity is used to capture when a user mentions a Disease such as 
 
 The `@Symptom` Entity is used to capture when a user mentions their symptoms such as `Joint Pain`, `Nausea`, or `Fever`.
 
-Entities can be trained and created from the DialogFlow console.
+Entities can be trained and created from the Dialogflow console.
 
-## DialogFlow Fulfillment
+## Dialogflow Fulfillment
 
 Fulfillment is handled via web hook to a GCP Cloud Function. Each intent and follow-up intent has a corresponding
 function within `functions/index.js`. The function handler must be mapped to the intent:
@@ -158,9 +158,9 @@ function within `functions/index.js`. The function handler must be mapped to the
   agent.handleRequest(intentMap);
 ```
 
-#### DialogFlow Agent
+#### Dialogflow Agent
 
-DialogFlow sends in an `agent` object to every function handler. The agent is used to handle conversation and context state.
+Dialogflow sends in an `agent` object to every function handler. The agent is used to handle conversation and context state.
 For example, when a user says `I will be traveling to Indonesia`, the agent captures the value of `Indonesia` as a `geo-country`:
 
 ```javascript
@@ -179,7 +179,7 @@ The agent is also used to respond to user inputs and queries. Use the `agent.add
 ```
 
 #### Cloud Function BigQuery Integration
-Once DialogFlow has the proper input arguments from the user, Cloud Functions will query Big Query:
+Once Dialogflow has the proper input arguments from the user, Cloud Functions will query Big Query:
 
 ```javascript
       const OPTIONS = {
@@ -199,7 +199,7 @@ Once DialogFlow has the proper input arguments from the user, Cloud Functions wi
             agent.add(`Here is a list of active diseases and contagions in ${userCountry}. \n - ${diseaseList.join('\n - ')} \nIf you would like prevention tips on a disease, respond with the name of the disease.`);
 ```
 
-Using `agent.add()` DialogFlow can respond to the user request dynamically with the BigQuery results.
+Using `agent.add()` Dialogflow can respond to the user request dynamically with the BigQuery results.
 
 ##### Intent Context
 
@@ -238,7 +238,7 @@ The `country` context parameter is then utilized in a follow-up intent's Big Que
 
 ##### Fulfillment Deployment
 
-This DialogFlow webhook is hosted on **Cloud Functions for Firebase**.
+This Dialogflow webhook is hosted on **Cloud Functions for Firebase**.
 [Node.js](https://nodejs.org/en/) is required to deploy the Fulfillment.
 
 1. Setup Firebase CLI
@@ -267,32 +267,32 @@ Click Fulfillment, toggle the Webhook button to ENABLED , and replace the url in
 
 ## eVect BigQuery Database
 
-Data used to power eVect stems from a variety of different public sources. The data allow the Dialogflow agent smartly process several related questions by an end user, all stemming from very different sources. Data were accessed via public APIs or public FTP sites and then lightly processed into *newline delimited JSON (NDJSON)* using [jq](https://github.com/stedolan/jq) Data were then loaded to BigQuery using the [BigQuery Python Client](https://googleapis.github.io/google-cloud-python/latest/bigquery/index.html).
+Data used to power eVect stems from a variety of different public sources. The data allow the Dialogflow agent smartly process several related questions by an end user, all stemming from very different sources. Data were accessed via public APIs or public FTP sites and then lightly processed into **newline delimited JSON (NDJSON)** using **[jq](https://github.com/stedolan/jq)** Data were then loaded to BigQuery using the [BigQuery Python Client](https://googleapis.github.io/google-cloud-python/latest/bigquery/index.html). 
 
 This repo contains the load NDJSON formatted data and Python load scripts in the `bigquery` directory. Included below is a short description and access location of the principal data sources:
 
-- CDC Traveler Data: includes detailed prevention tips on diseases by country, including traveler sub-group entity (e.g. traveling with children, pregnant women).
-Source: [CDC Travel](https://wwwnc.cdc.gov/travel/)
+- CDC Traveler Data: includes detailed prevention tips on diseases by country, including traveler sub-group entity (e.g. traveling with children, pregnant women). 
+**Source:** [CDC Travel](https://wwwnc.cdc.gov/travel/)
 
 - Disease Symptom Data: includes common and principal symptoms related to various vector-borne diseases, broken out by traveler sub-group entity.
-Source: [CDC Disease Symptoms and Treatment Pages (example for Dengue Fever)](https://www.cdc.gov/dengue/symptoms/index.html)
+**Source:** [CDC Disease Symptoms and Treatment Pages (example for Dengue Fever)](https://www.cdc.gov/dengue/symptoms/index.html)
 
-- Disease Outbreak Data: includes current vector-borne illness outbreaks in cities throughout the world. Sources: [HealthMap](https://www.healthmap.org/en/) and [Global Incident Map, Outbreaks](https://outbreaks.globalincidentmap.com/)
+- Disease Outbreak Data: includes current vector-borne illness outbreaks in cities throughout the world. **Sources:** [HealthMap](https://www.healthmap.org/en/) and [Global Incident Map, Outbreaks](https://outbreaks.globalincidentmap.com/)
 
-- Hospital and Treatment Center Data: includes the name, address, and type of treatment center by country and city entities.
-Source: [CDC Travel](https://wwwnc.cdc.gov/travel/)
+- Hospital and Treatment Center Data: includes the name, address, and type of treatment center by country and city entities. 
+**Source:** [CDC Travel](https://wwwnc.cdc.gov/travel/)
 
 
 ## Performance
 
-Overall, the DialogFlow Agent preformed very well given the training data used. Here are some highlights:
+Overall, the Dialogflow Agent preformed very well given the training data used. Here are some highlights:
 
 1. Latency from Cloud Function backed fulfillment is very responsive. When querying BigQuery, responses returned within
 400 - 1200ms. If there is no query required for the Intent, fulfillment responded incredibly fast in about 10ms.
 
-2. DialogFlow has excellent scalability when backed by serverless Cloud Functions. 
+2. Dialogflow has excellent scalability when backed by serverless Cloud Functions. 
 
-3. DialogFlow integrates with many popular platforms such as Facebook Messenger, Slack, and Google Assistant.
+3. Dialogflow integrates with many popular platforms such as Facebook Messenger, Slack, and Google Assistant.
    Testing on Google Assistant is as easy as logging in with your GCP project email account and saying:
    
    `Talk to my test app.`
@@ -303,15 +303,15 @@ Overall, the DialogFlow Agent preformed very well given the training data used. 
 4. The Agent ingests training data within minutes, allowing for quick and easy testing and development cycles.
 
 5. The Agent has difficulty understanding native English speakers when pronouncing non-native city locations.
-For example, the Agent could not pick up `Mogi Guaçu` when pronounced by a native english speaker.
+For example, the Agent could not pick up `Mogi Guaçu` when pronounced by a native English speaker.
 
     Fortunately, the Agent will accept both speech and text, so the remedy for these scenarios could
     be to simply use the keyboard when speaking to the Agent over Google Assistant.
 
-6. There have been some cases of inconsistencies with the built in Entities on Google DialogFlow
+6. There have been some cases of inconsistencies with the built in Entities on Google Dialogflow
    based on which platform the user is testing with.
 
-   For example, when a user mentions `Tanzania`, the DialogFlow console will resolve the value to `Tanzania`
+   For example, when a user mentions `Tanzania`, the Dialogflow console will resolve the value to `Tanzania`
    but when testing on Google Assistant, `Tanzania` resolved to `Tanzania, United Republic of`. This has to be 
    manually handled in the codebase.
    
@@ -321,11 +321,11 @@ While this was a simple MVP to showcase the power of Dialogflow backed by BigQue
 there are several feature enhancements that could be made to make the Agent even more powerful.
 Here are some potential next steps:
 
-1. Gather more data for BigQuery datasets.
+1. Gather more data for BigQuery data and automate ingestion.
 
    The data used by this MVP is just a small sample set of all the vector borne diseases that are tracked
-   across the globe. Ingesting this global information would make the Agent more robust and able to assist
-   more users across the country.
+   across the globe. Ingesting global information would make the Agent more robust and able to assist
+   more users across the world. Data could be pulled in a number of ways, such as Cloud Functions triggered by Cloud Scheduler to access API endpoints or streamed in and written to BigQuery using Pub/Sub and Dataflow.
    
 2. Persist user conversations.
 
@@ -333,7 +333,10 @@ Here are some potential next steps:
    persisted after the conversation to be used in training the Agent. This will lead to more fluid and natural 
    interactions with the Agent.
    
-   Furthermore, Entities mentioned by the user such as `Symptoms` and `geo-city` should also be persisted. This
-   could potentially lead to the creation of a native analytics service that could predict when and where outbreaks
-   of diseases occur based on user input. This would allow DialogFlow to be backed not only by public CDC and Government 
-   data, but also an in-house custom model.
+   Furthermore, Entities mentioned by the user such as `Symptoms` and `geo-city` should also be persisted. Storing these entity data could allow the creation of a native analytics service, providing descriptive and predictive statistics about where and when outbreaks of diseases occur based on user input. These early detection systems would allow the Dialogflow Agent to utilize an in-house custom model in addition to CDC and other government data. Such a data repository would also be helpful to public health researchers and government agencies seeking to track the spread of vector borne diseases.
+
+3. Multilingual Agent support.
+
+   eVect Health provides health and medical information for countries and cities throughout the world. However, the Agent currently only interprets English inputs. Future iterations may include support for other languages, enabling non English speakers throughout the globe to interact with the application. Dialogflow currently supports speech-to-text/speech recognition for [20 of the most common global languages](https://cloud.google.com/dialogflow-enterprise/docs/reference/language) in addition to regional dialects. 
+    
+
